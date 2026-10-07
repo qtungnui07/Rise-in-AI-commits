@@ -1,6 +1,6 @@
-﻿/data/raw
+﻿/temp_files/
 
-.ipynb_checkpoints
-
-/temp_files/
-
+/data/raw
+/data/interim/*
+!/data/interim/.gitkeep
+!/data/interim/latest_standardized_data.csv
