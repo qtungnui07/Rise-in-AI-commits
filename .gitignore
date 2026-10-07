@@ -1,5 +1,7 @@
 ﻿/temp_files/
 
+.ipynb_checkpoints
+
 /data/raw
 /data/interim/*
 !/data/interim/.gitkeep
