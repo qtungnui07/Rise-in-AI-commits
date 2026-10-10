@@ -18,6 +18,7 @@ Rise-in-AI-commits/
 │   ├── interim/            # Các dữ liệu đang đuợc xử lý
 │   ├── processed/          # Các dữ liệu đã đuợc xử lý
 ├── notebooks/              # Các script Jupyter Notebook chính của dự án
+├── reports/                # Các báo cáo liên quan đến dự án
 ├── src/                    # Các script hỗ trợ
 ├── .gitignore
 ├── requirements.txt
