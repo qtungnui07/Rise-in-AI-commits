@@ -74,3 +74,12 @@ Khoảng 22.282/35.278 dòng bị để trống ở 2 cột này. Đây không p
 - GitHub GraphQL API: truy vấn metadata của commit (cụ thể là ngày commit), được dùng thay cho phương pháp scrape trực tiếp vì cho kết quả nhanh và ổn định hơn
 - concurrent.futures (ThreadPoolExecutor): thực hiện nhiều request song song để rút ngắn thời gian xử lý
 - Các thư viện chuẩn khác: os, io (StringIO), datetime, time, phục vụ việc đọc file, tạo thư mục và quản lý thời gian khi xuất file
+
+## Phân tích trực quan hóa (Visualization):
+
+Trong phần này, chúng ta sẽ tiến hành khám phá và trực quan hóa dữ liệu tương tác AI để làm rõ các đặc trưng hành vi và xu hướng phát triển theo thời gian. Việc phân tích đa chiều qua các biểu đồ sẽ giúp cung cấp cái nhìn tổng quan lẫn chi tiết về sự dịch chuyển trong quá trình ứng dụng công cụ hỗ trợ lập trình.
+
+**1.** Khảo sát số lượng và sự tăng trưởng theo năm:
+- **Mục tiêu:** Khảo sát nhịp độ phát triển dài hạn và đo lường mức độ bùng nổ trong việc ứng dụng AI vào các code commit qua từng năm.
+- **Phân tích:** Trước năm 2023, số lượng dữ liệu rất nhỏ, mỗi năm chiếm dưới 0.7% tổng số lượng. Từ năm 2023, lượng tương tác tăng mạnh và đạt đỉnh vào năm 2025 với 18,242 tương tác, chiếm hơn 53% trong tổng số 34,075 dòng của dataset. Con số này cho thấy các công cụ AI được sử dụng thường xuyên hơn trong quá trình viết code.
+- **Nguyên nhân:** Sự bùng nổ này bắt nguồn từ cột mốc ra mắt của ChatGPT vào 30/11/2022, trùng khớp với biểu đồ khi năm 2023, số lượng tương tác bắt đầu bùng nổ mạnh tạo tiền đề để các công cụ trợ lý AI được tích hợp phổ biến và sử dụng thường xuyên hơn trong quá trình lập trình.
