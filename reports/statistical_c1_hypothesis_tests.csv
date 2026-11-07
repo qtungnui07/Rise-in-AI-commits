@@ -1,0 +1,7 @@
+question,test,statistic,p_value,dof,effect_size,significant_α_0.05,n_python,n_js,median_python,median_js,n_group_0,n_group_1,median_group_0,median_group_1
+C1.1 language × is_modified,Chi-square,35.9017008987387,2.0752747134321817e-09,1.0,0.03253484908087928,True,,,,,,,,
+C1.2 year × is_modified,Chi-square,176.61499341809247,3.9758444500241185e-37,4.0,0.07216141972103306,True,,,,,,,,
+C1.3 days_to_modification: Python vs JS,Mann–Whitney U,11729438.5,2.59529936172554e-07,,0.06472740538926725,True,7561.0,2914.0,1.766,0.8755,,,,
+C1.4 code_lines: is_modified False vs True,Mann–Whitney U,110738530.5,1.63493803768589e-160,,-0.17515327816678694,True,,,,,21327.0,12590.0,28.0,43.0
+C1.5 ai_tool × is_modified,Chi-square,380.278196960354,4.0314259574991017e-78,7.0,0.10588684233386453,True,,,,,,,,
+C1.6 task_type × is_modified,Chi-square,446.77616641942024,2.4253049114657213e-93,6.0,0.11477208808204677,True,,,,,,,,
