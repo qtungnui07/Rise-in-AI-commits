@@ -4,7 +4,9 @@
 
 Dự án này nhằm khảo sát xu hướng sử dụng AI trong các dự án IT, cụ thể là xem AI đang được dùng nhiều nhất ở đâu, trong loại công việc nào (viết hàm mới, sửa lỗi, viết test, ...), và mức độ đóng góp của AI vào từng đoạn code (viết toàn bộ hay chỉ hỗ trợ một phần). Từ những quan sát này, mục tiêu cuối cùng là đưa ra một số gợi ý về việc nên và không nên dùng AI trong trường hợp nào khi lập trình.
 
-Dữ liệu được thu thập từ các repository công khai trên GitHub, dựa vào các comment trong code có nhắc đến AI (ví dụ "written by ChatGPT", "AI generated", ...) để xác định những đoạn code có khả năng do AI tạo ra hoặc hỗ trợ. Sau khi thu thập, dữ liệu sẽ được phân tích thêm để xem các đoạn code này có bị chỉnh sửa lại sau đó hay không, dựa vào thời điểm của lần thay đổi đầu tiên (change_commit_date). Đây là cơ sở để đánh giá mức độ đáng tin cậy của code do AI viết.
+Dữ liệu được thu thập từ các repository công khai trên GitHub, dựa vào các comment trong code có nhắc đến AI (ví dụ "written by ChatGPT", "AI generated", ...) để xác định những đoạn code có khả năng do AI tạo ra hoặc hỗ trợ. Sau khi thu thập, dữ liệu sẽ được phân tích thêm để xem các đoạn code này có bị chỉnh sửa lại sau đó hay không, dựa vào thời điểm của lần thay đổi đầu tiên (change_commit_date). Dữ liệu không có nhóm đối chứng là code không dùng AI, nên tỷ lệ này không dùng để đánh giá độ tin cậy của code do AI viết.
+
+Dữ liệu chỉ gồm các comment tự khai báo có dùng AI trong code Python và JavaScript, nên kết quả không đại diện cho mọi "commit AI" hay "code AI".
 
 ## Lý do cần chuẩn hoá dữ liệu
 
@@ -23,14 +25,15 @@ Ngoài ra, dữ liệu gốc còn thiếu một số thông tin quan trọng cho
 | id | string | Mã định danh của từng dòng dữ liệu, được sinh ra từ dataset gốc, bao gồm ngôn ngữ lập trình, loại comment tìm được và một số định danh phụ để phân biệt các match với nhau |
 | repo | string | Tên đầy đủ của repository GitHub chứa đoạn code, theo định dạng owner/ten-repo |
 | language | string | Ngôn ngữ lập trình của file chứa đoạn code, ví dụ python, js |
-| commit_url | string | Đường dẫn tới commit trên GitHub chứa đoạn code này. Cột này không có sẵn trong dữ liệu gốc, được suy ra từ đường dẫn file (blob url) rồi chuyển đổi thành đường dẫn commit |
+| commit_url | string | Đường dẫn tới commit cuối cùng sửa dòng comment AI, lấy bằng `git blame` (GitHub GraphQL API) trên phiên bản file trong dữ liệu gốc. Cột này không có sẵn trong dữ liệu gốc |
 | file | string | Đường dẫn tương đối của file trong repository, tính từ thư mục gốc |
 | code_block | string | Đoạn code thực tế được match với comment liên quan đến AI. Ký tự xuống dòng trong code được thay bằng chuỗi ký tự "\n" để tránh làm hỏng định dạng khi lưu vào file csv |
-| commit_date | datetime (UTC, ISO 8601) | Thời điểm commit nêu trên được tạo ra, được truy vấn thêm từ GitHub API do dữ liệu gốc không có sẵn. Có thể bị thiếu (null) trong một số trường hợp, xem phần Dữ liệu bị thiếu |
-| change_commit_url | string | Đường dẫn tới commit đầu tiên sửa đổi đoạn code này sau khi được tạo ra (nếu có), lấy trực tiếp từ dữ liệu gốc |
-| change_commit_date | datetime (UTC, ISO 8601) | Thời điểm của commit sửa đổi nêu trên. Bị để trống nếu đoạn code chưa từng được sửa lại, xem phần Dữ liệu bị thiếu |
-| task_type (dự kiến bổ sung) | string | Loại công việc mà đoạn code do AI thực hiện, ví dụ viết hàm mới, sửa lỗi, viết test, viết docstring, refactor, ... Cột này chưa có trong dữ liệu hiện tại, sẽ được gắn nhãn ở bước tiếp theo |
-| contribution_type (dự kiến bổ sung) | string | Mức độ đóng góp của AI vào đoạn code, ví dụ viết toàn bộ, hỗ trợ một phần, hoặc chỉ gợi ý/chỉnh sửa nhỏ. Cũng sẽ được gắn nhãn ở bước tiếp theo |
+| commit_date | datetime (UTC, ISO 8601) | Thời điểm của commit `commit_url`. Phiên bản file trong dữ liệu gốc là một phiên bản về sau, nên một lần sửa dòng comment sau khi code được đưa vào sẽ làm ngày này muộn hơn thực tế. Vì vậy đây chỉ là cận trên của ngày code được đưa vào. Có thể bị thiếu (null), xem phần Dữ liệu bị thiếu |
+| change_commit_url | string | Đường dẫn tới commit đầu tiên sửa đổi đoạn code này (nếu thu thập được), lấy trực tiếp từ dữ liệu gốc |
+| change_commit_date | datetime (UTC, ISO 8601) | Thời điểm của commit sửa đổi nêu trên. Bị để trống nếu nguồn không thu thập được lần thay đổi đầu tiên, xem phần Dữ liệu bị thiếu |
+| has_recorded_change | boolean | True nếu có `change_commit_date`. Là cận dưới của việc code bị sửa (tạo ở notebook 03) |
+| AI_task_type | string | AI được dùng cho việc gì (Code Implementation, Documentation, Testing, ...). Do LLM gán, lưu trong `data/processed/commit_annotations_llm.csv`. Chưa được kiểm chứng, xem notebook 08 |
+| AI_contribution_type | string | AI đóng góp theo cách nào (Implementation, Artifact Generation, Knowledge Support, ...). Do LLM gán, cùng file với `AI_task_type` |
 
 ## Quy trình xử lý và chuẩn hoá dữ liệu thô
 
@@ -42,7 +45,7 @@ Các bước xử lý chính như sau:
 
 1. Đọc cả 2 file jsonl bằng pandas, sau đó merge lại với nhau bằng left join để giữ nguyên toàn bộ số dòng của bảng gốc, đồng thời bổ sung thêm thông tin thay đổi nếu match được.
 2. Tạo bảng output mới, lấy các cột cần thiết từ dataset gốc và đổi tên lại cho ngắn gọn, rõ ràng hơn (id, repo, language, file, code_block).
-3. Dữ liệu gốc chỉ có đường dẫn tới file (blob url) chứ không có đường dẫn tới commit, do đó cần parse lại đường dẫn file để suy ra đường dẫn commit tương ứng.
+3. Dữ liệu gốc chỉ có đường dẫn tới file (blob url) ở một phiên bản về sau, không có đường dẫn tới commit đưa code vào. Notebook tìm dòng comment AI trong phiên bản file đó và chạy `git blame` trên dòng này để lấy commit cuối cùng sửa nó.
 4. Dữ liệu gốc cũng không có sẵn ngày commit, nên cần gọi thêm GitHub API để lấy. Cách tiếp cận ban đầu là lấy file .patch của từng commit (không cần token xác thực) rồi tìm dòng "Date:" trong nội dung trả về. Tuy nhiên cách này thất bại ở phần lớn số dòng (khoảng 97%), do GitHub từ chối render file patch khi diff quá lớn hoặc commit có chứa nội dung nhị phân. Sau đó, quy trình được chuyển sang dùng GitHub API chính thức (GraphQL) để lấy riêng ngày commit mà không cần render toàn bộ diff, giúp tỉ lệ thất bại giảm xuống còn khoảng 3%.
 5. Do số lượng commit cần truy vấn khá lớn, để tránh vượt giới hạn số lượng request của GitHub và rút ngắn thời gian xử lý, các kỹ thuật sau được áp dụng: loại bỏ các đường dẫn commit bị trùng lặp trước khi gọi API (do nhiều dòng dữ liệu có thể trỏ đến cùng một commit), gộp nhiều commit vào chung một truy vấn GraphQL duy nhất (batching), và thực hiện nhiều truy vấn song song bằng multithreading.
 6. Bổ sung 2 cột change_commit_url và change_commit_date từ dataset gốc vào bảng output.
@@ -52,18 +55,26 @@ Các bước xử lý chính như sau:
 
 Trong bảng dữ liệu sau khi chuẩn hoá, có 2 cột chính bị thiếu giá trị ở một số dòng. Dựa trên tính chất của từng loại missing data, chúng tôi đã đưa ra các hướng xử lý cụ thể như sau:
 
-**1. Cột `commit_date` (Thiếu ngẫu nhiên do lỗi 404 - ~3.1%)**:
-Khoảng 1.082/35.278 dòng (tương ứng 486 commit duy nhất) không lấy được ngày commit. Kết quả ping trực tiếp bằng HTTP Request cho thấy 100% các URL này trả về lỗi 404 (Not Found) hoặc 429 (Rate Limit). Nguyên nhân:
+**1. Cột `commit_date` (~3,9%)**:
+1.361/35.278 dòng không lấy được commit qua `git blame`, nên cả `commit_url` và `commit_date` đều trống. Với 1.082 dòng thiếu ngày ở lần chạy trước, kiểm tra bằng HTTP request cho thấy các URL trả về lỗi 404 (Not Found) hoặc 429 (Rate Limit). Nguyên nhân có thể là:
 - Repository đã bị xóa hoặc chuyển sang chế độ private sau thời điểm dữ liệu gốc được thu thập.
 - Lịch sử commit bị ghi đè (ví dụ force push hoặc amend).
 - Repository bị đổi tên hoặc chuyển chủ sở hữu.
-**-> Hướng xử lý (Quyết định): Xóa bỏ (Drop)** toàn bộ 1.082 dòng này. Do dữ liệu thiếu ngày tháng sẽ không có ý nghĩa khi phân tích xu hướng chuỗi thời gian (time-series) và tỷ lệ 3.1% là rất nhỏ, việc xóa không làm ảnh hưởng đến tính đại diện của dữ liệu.
+**-> Hướng xử lý: Xóa** 1.361 dòng này, vì không có ngày thì không dùng được cho phân tích theo thời gian. Còn lại 33.917 dòng.
 
-**2. Cột `change_commit_url` và `change_commit_date` (Thiếu có chủ đích MNAR - ~63.1%)**:
-Khoảng 22.282/35.278 dòng bị để trống ở 2 cột này. Đây không phải là lỗi rỗng dữ liệu, mà phản ánh một sự thật ngầm hiểu (insight) quan trọng: những đoạn code AI sinh ra ở các dòng này **chưa từng bị con người chỉnh sửa lại** kể từ lúc được commit.
-**-> Hướng xử lý (Quyết định): Không xóa (Giữ nguyên và Feature Engineering)**. Chúng tôi biến sự khuyết thiếu này thành một Đặc trưng (Feature) mới mang tên `is_modified` (kiểu Boolean). 
-- Nếu có ngày chỉnh sửa: `is_modified = True` (Code AI đã bị sửa).
-- Nếu để trống (NaN): `is_modified = False` (Code AI được giữ nguyên bản). Các ô NaN sau đó được lấp đầy (Fillna) bằng chuỗi `"Not Modified"` để phục vụ trực quan hóa.
+**2. Cột `change_commit_url` và `change_commit_date` (~63,2%)**:
+22.282/35.278 dòng bị để trống ở 2 cột này. Theo `dataset/SCHEMA.md` của nguồn, ô trống nghĩa là lần thay đổi đầu tiên "was not successfully collected" (không thu thập được). Vì vậy không thể kết luận rằng code ở các dòng này chưa từng bị sửa.
+**-> Hướng xử lý: Không xóa.** Tạo cột `has_recorded_change` (Boolean):
+- Có ngày thay đổi: `has_recorded_change = True`.
+- Để trống: `has_recorded_change = False`. Không biết code có bị sửa hay không.
+
+Tỷ lệ `has_recorded_change = True` là cận dưới của tỷ lệ code bị sửa.
+
+**3. Dòng trùng lặp**:
+33.917 dòng chỉ có 21.502 khối `(repo, file, code_block)` duy nhất, chủ yếu do một comment khớp với nhiều mẫu tìm kiếm. Giữ một dòng cho mỗi khối; khi các dòng trùng có `commit_date` khác nhau, giữ ngày sớm nhất. Loại thêm 4 khối của tháng 4/2026 vì dữ liệu tháng này chưa đủ. Còn lại 21.498 khối.
+
+**4. `commit_date` chỉ là cận trên**:
+`git blame` chạy trên một phiên bản file về sau, nên một lần sửa dòng comment sau khi code được đưa vào sẽ làm `commit_date` muộn hơn thực tế. Trong dữ liệu chưa gộp, 17% dòng có thay đổi có lần thay đổi đầu tiên xảy ra trước `commit_date` và 12% có thời điểm trùng nhau. Sau khi gộp, 1.742 khối có khoảng thời gian ≤ 0; các khoảng này bị loại khỏi `days_to_modification` nhưng khối vẫn giữ `has_recorded_change = True`.
 
 ## Công cụ sử dụng
 
@@ -81,5 +92,5 @@ Trong phần này, chúng ta sẽ tiến hành khám phá và trực quan hóa d
 
 **1.** Khảo sát số lượng và sự tăng trưởng theo năm:
 - **Mục tiêu:** Khảo sát nhịp độ phát triển dài hạn và đo lường mức độ bùng nổ trong việc ứng dụng AI vào các code commit qua từng năm.
-- **Phân tích:** Trước năm 2023, số lượng dữ liệu rất nhỏ, mỗi năm chiếm dưới 0.7% tổng số lượng. Từ năm 2023, lượng tương tác tăng mạnh và đạt đỉnh vào năm 2025 với 18,242 tương tác, chiếm hơn 53% trong tổng số 34,075 dòng của dataset. Con số này cho thấy các công cụ AI được sử dụng thường xuyên hơn trong quá trình viết code.
-- **Nguyên nhân:** Sự bùng nổ này bắt nguồn từ cột mốc ra mắt của ChatGPT vào 30/11/2022, trùng khớp với biểu đồ khi năm 2023, số lượng tương tác bắt đầu bùng nổ mạnh tạo tiền đề để các công cụ trợ lý AI được tích hợp phổ biến và sử dụng thường xuyên hơn trong quá trình lập trình.
+- **Phân tích:** Năm 2022 chỉ có 55 khối (0,3%), đều từ tháng 12. Số khối tăng từ 1.539 (2023) lên 4.001 (2024) và 11.382 (2025, 52,9% trong tổng số 21.498 khối). Năm 2026 chỉ có dữ liệu quý 1 (4.521 khối), nên không so sánh trực tiếp với các năm đủ 12 tháng.
+- **Giới hạn:** Dữ liệu bắt đầu từ 3/12/2022, sau ngày ChatGPT ra mắt (30/11/2022), nên không so sánh được giai đoạn trước và sau ChatGPT. Hoạt động chung trên GitHub cũng tăng trong giai đoạn này, nên cần chuẩn hóa theo số lần push trước khi kết luận về tốc độ tăng.

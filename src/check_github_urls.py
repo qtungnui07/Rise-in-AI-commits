@@ -2,12 +2,14 @@ import pandas as pd
 import requests
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import urllib3
-import os
+from pathlib import Path
 
 urllib3.disable_warnings()
 
-input_csv = r"data\interim\missing_cases_extracted\missing_commit_date.csv"
-output_csv = r"data\interim\missing_cases_extracted\url_status_check.csv"
+# File do notebook 02 tạo ra; đường dẫn tính từ thư mục gốc repo nên chạy được trên mọi hệ điều hành
+EXTRACT_DIR = Path(__file__).resolve().parents[1] / "data" / "interim" / "missing_cases_extracted"
+input_csv = EXTRACT_DIR / "missing_commit_date.csv"
+output_csv = EXTRACT_DIR / "url_status_check.csv"
 
 print("Reading data from file:", input_csv)
 df = pd.read_csv(input_csv)

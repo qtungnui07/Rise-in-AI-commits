@@ -1,8 +1,8 @@
-AI_task_type,Implementation,Generic / Indeterminate,Knowledge Support,False Positive,Artifact Generation
-Code Implementation,8674,1039,834,639,460
-Documentation,998,939,239,584,1231
-Code Enhancement,869,218,1475,207,22
-Generic / Indeterminate,542,840,287,385,108
-False Positive,193,261,193,1175,67
-Testing,516,248,107,191,464
-Bug Fixing,35,12,108,61,3
+AI_task_type,Implementation,Generic / Indeterminate,False Positive,Knowledge Support,Artifact Generation
+Code Implementation,7642,855,605,770,418
+Documentation,893,856,556,222,1115
+Code Enhancement,753,197,194,1341,20
+Generic / Indeterminate,502,761,355,260,101
+False Positive,181,243,1082,168,65
+Testing,428,222,158,102,273
+Bug Fixing,27,9,28,92,3
