@@ -1,12 +1,12 @@
-# Sự tăng truởng của commit hỗ trợ bởi AI
+# Sự tăng trưởng của commit hỗ trợ bởi AI
 
 > [!NOTE]
-> Đây là dự án "Khoa học dữ liệu" của sinh viên truờng Đại học CMC.
+> Đây là dự án "Khoa học dữ liệu" của sinh viên trường Đại học CMC.
 
 ## Thông tin dự án
-Kho lưu trữ này chứa tập hợp dữ liệu và các phân tích liên quan đến sự gia tăng số lượng commit liên quan đến AI trong nhiều dự án mã nguồn mở khác nhau. Mục tiêu là phân tích dữ liệu và trực quan hóa các xu hướng sử dụng AI của các lập trình viên theo thời gian, cũng như xác định những tác vụ cụ thể mà AI hỗ trợ, từ đó rút ra những thông tin hữu ích để đưa ra các dự đoán và khuyến nghị.
+Kho lưu trữ này chứa dữ liệu và các phân tích về xu hướng sử dụng AI trong các dự án mã nguồn mở Python và JavaScript trên GitHub. Mục tiêu là khảo sát sự thay đổi theo thời gian, vai trò của file trong dự án, tỷ lệ code được chỉnh sửa trong 30 ngày đầu cùng mục đích sửa đổi (sửa lỗi, cập nhật tính năng, dọn dẹp code), từ đó rút ra các khuyến nghị thực tế khi dùng AI lập trình.
 
-Các dữ liệu đã đuợc trích xuất từ repo sau: https://github.com/MSwadhin/empirical-study-dev-ai-usage, cố định ở commit `3ec63b48e2`. Đây là gói replication của bài báo:
+Dữ liệu được trích xuất từ repo: https://github.com/MSwadhin/empirical-study-dev-ai-usage (commit `3ec63b48e2`), là gói replication của bài báo:
 
 > Empirical Study on the Characteristics and Evolution of AI-usage in GitHub Repositories. arXiv:2606.06843. https://arxiv.org/abs/2606.06843
 
@@ -14,9 +14,10 @@ Dữ liệu chỉ gồm các comment tự khai báo có dùng AI trong code Pyth
 
 ## Lưu ý về dữ liệu
 - Đơn vị phân tích là khối code duy nhất `(repo, file, code_block)`. Dữ liệu gốc có nhiều dòng cho cùng một khối vì một comment khớp với nhiều mẫu tìm kiếm.
-- `has_recorded_change` cho biết khối code có ghi nhận lần thay đổi đầu tiên hay không. Theo schema của nguồn, ô trống nghĩa là không thu thập được, nên đây là cận dưới của việc code bị sửa.
-- `commit_date` lấy từ `git blame` trên dòng comment ở một phiên bản file về sau, nên chỉ là cận trên của ngày code được đưa vào. Khoảng thời gian ≤ 0 đến lần thay đổi đầu tiên bị loại khỏi `days_to_modification`.
-- Notebook 08 dùng nhãn do LLM gán, chưa được kiểm chứng, nên chỉ là phân tích thăm dò.
+- `has_recorded_change` cho biết khối code có ghi nhận lần thay đổi đầu tiên hay không (cận dưới của việc code bị sửa). Để so sánh công bằng giữa các năm, phân tích sử dụng thêm `change_30d` (có sửa trong 30 ngày đầu, chỉ tính trên các khối có đủ ít nhất 30 ngày theo dõi).
+- `commit_date` lấy từ `git blame` trên dòng comment ở một phiên bản file về sau, nên chỉ là cận trên của ngày code được đưa vào. Khoảng thời gian <= 0 đến lần thay đổi đầu tiên bị loại khỏi `days_to_modification` và `change_30d`.
+- `ai_tool`, `ai_verb`, `file_role` và `change_intent` được phân loại bằng quy tắc từ khóa từ comment, đường dẫn file và `change_commit_message`.
+- Notebook 08 dùng nhãn do LLM gán (chưa được kiểm chứng, mức đồng thuận với nhãn nhóm còn thấp) kết hợp đối chiếu với mô hình TF-IDF + Logistic Regression trên mẫu nhãn của nhóm.
 
 ## Cách chạy
 ```bash
@@ -28,25 +29,24 @@ for f in 0[2-8]_*.ipynb; do jupyter nbconvert --to notebook --execute --inplace 
 ```
 
 Thứ tự notebook:
-1. `01_standardize` — gộp 2 file jsonl của nguồn và lấy `commit_date` qua GitHub GraphQL API. Cần đặt `comment_codeblock_dataset.jsonl` và `comment_codeblock_first_change_dataset.jsonl` (từ repo nguồn ở commit `3ec63b48e2`) vào `data/raw/` và đặt biến môi trường `GITHUB_TOKEN`. Kết quả `data/interim/latest_standardized_data.csv` đã có trong repo, nên có thể bỏ qua bước này.
-2. `02_missing_data_exploration_commits` — xuất các dòng thiếu dữ liệu ra `data/interim/missing_cases_extracted/`.
-3. `03_data_quality_and_processing_commits` — lọc, gộp dòng trùng và tạo `data/processed/commits_features.csv`.
-4. `04_visualization` → `07_classification` — đọc `commits_features.csv`, ghi bảng vào `reports/` và hình vào `reports/figures/`.
-5. `08_ai_task_contribution` — đọc thêm `commit_annotations_llm.csv` (nhãn LLM) và `commit_annotations.csv` (nhãn của nhóm).
+1. `01_standardize`: gộp 2 file jsonl của nguồn, giữ lại `comment`, `file_url`, `change_commit_message` và lấy `commit_date` qua GitHub GraphQL API. Cần đặt 2 file dữ liệu gốc vào `data/raw/` và thiết lập biến môi trường `GITHUB_TOKEN`.
+2. `02_missing_data_exploration_commits`: thống kê dữ liệu thiếu và xuất danh sách thiếu `commit_date` ra `data/interim/missing_cases_extracted/` (có thể kiểm tra link repo bằng `src/check_github_urls.py`).
+3. `03_data_quality_and_processing_commits`: lọc, gộp dòng trùng, tạo các đặc trưng (`change_30d`, `file_role`, `change_intent`, kích thước code) và xuất `data/processed/commits_features.csv`.
+4. `04_visualization` -> `07_classification`: đọc `commits_features.csv` để trực quan hóa, kiểm định thống kê theo cụm repo, phân tích hồi quy và chạy mô hình phân loại `change_30d`. Kết quả lưu vào `reports/` và `reports/figures/`.
+5. `08_ai_task_contribution`: đọc thêm `commit_annotations_llm.csv` (nhãn LLM) và `commit_annotations.csv` (nhãn của nhóm) để phân tích tác vụ AI, đối chiếu sai số giữa LLM với nhóm và thử nghiệm mô hình TF-IDF.
 
 ## Thông tin mã nguồn
-Dự án đuợc triển khai hoàn toàn bằng Python + Jupyter Notebook
+Dự án được triển khai bằng Python + Jupyter Notebook.
 
-Cấu trúc:
 ```
 Rise-in-AI-commits/
 ├── data/
 │   ├── raw/                # Dữ liệu gốc (không commit)
-│   ├── interim/            # Các dữ liệu đang đuợc xử lý
-│   ├── processed/          # Các dữ liệu đã đuợc xử lý
-├── notebooks/              # Các script Jupyter Notebook chính của dự án
-├── reports/                # Các báo cáo liên quan đến dự án
-├── src/                    # Các script hỗ trợ
+│   ├── interim/            # Dữ liệu trung gian đang xử lý
+│   ├── processed/          # Dữ liệu sạch và bộ nhãn
+├── notebooks/              # Các Jupyter Notebook chính của dự án (01 - 08)
+├── reports/                # Báo cáo EDA.md, bảng kết quả CSV và thư mục figures/
+├── src/                    # Script hỗ trợ (check_github_urls.py)
 ├── .gitignore
 ├── requirements.txt
 └── README.md
