@@ -1,0 +1,11 @@
+term,VIF
+Intercept,1.0
+C(language)[T.python],1.0815772974956053
+C(ai_tool)[T.claude],2.549730357731174
+C(ai_tool)[T.gemini_bard],1.120411402222298
+C(ai_tool)[T.github_copilot],1.2477971157600418
+C(ai_tool)[T.llama_meta],1.0408991963321879
+C(ai_tool)[T.other_ai],1.5087050673529716
+C(ai_tool)[T.other_tool],1.003550686963626
+code_lines,1.0391419203031362
+repo_commit_count,2.138556231727765
