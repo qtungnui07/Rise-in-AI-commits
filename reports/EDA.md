@@ -1,96 +1,105 @@
-# Rise in AI commits - Báo cáo EDA
+# Rise in AI commits - Báo cáo phân tích dữ liệu (EDA)
 
-## Tổng quan
+## 1. Tổng quan dự án
 
-Dự án này nhằm khảo sát xu hướng sử dụng AI trong các dự án IT, cụ thể là xem AI đang được dùng nhiều nhất ở đâu, trong loại công việc nào (viết hàm mới, sửa lỗi, viết test, ...), và mức độ đóng góp của AI vào từng đoạn code (viết toàn bộ hay chỉ hỗ trợ một phần). Từ những quan sát này, mục tiêu cuối cùng là đưa ra một số gợi ý về việc nên và không nên dùng AI trong trường hợp nào khi lập trình.
+Dự án này khảo sát xu hướng sử dụng AI trong các dự án mã nguồn mở Python và JavaScript trên GitHub. Thay vì chỉ đếm số lượng commit theo thời gian, báo cáo tập trung vào 3 câu hỏi thực tế:
 
-Dữ liệu được thu thập từ các repository công khai trên GitHub, dựa vào các comment trong code có nhắc đến AI (ví dụ "written by ChatGPT", "AI generated", ...) để xác định những đoạn code có khả năng do AI tạo ra hoặc hỗ trợ. Sau khi thu thập, dữ liệu sẽ được phân tích thêm để xem các đoạn code này có bị chỉnh sửa lại sau đó hay không, dựa vào thời điểm của lần thay đổi đầu tiên (change_commit_date). Dữ liệu không có nhóm đối chứng là code không dùng AI, nên tỷ lệ này không dùng để đánh giá độ tin cậy của code do AI viết.
+1. Lập trình viên đang dùng công cụ AI nào, ở đâu trong dự án (code chính, file test, frontend hay script cá nhân) và xu hướng này dịch chuyển ra sao từ cuối năm 2022 đến quý 1 năm 2026?
+2. Sau khi code AI được đưa vào dự án, tỷ lệ bị chỉnh sửa trong 30 ngày đầu là bao nhiêu và mục đích của lần sửa đầu tiên đó là gì (sửa lỗi, cập nhật tính năng hay dọn dẹp code)?
+3. AI thường được giao những tác vụ gì (viết code mới, viết tài liệu, viết test, sửa lỗi) và mức độ tin cậy của bộ nhãn do LLM gán đến đâu?
 
-Dữ liệu chỉ gồm các comment tự khai báo có dùng AI trong code Python và JavaScript, nên kết quả không đại diện cho mọi "commit AI" hay "code AI".
+Dữ liệu được trích xuất từ bộ `MSwadhin/empirical-study-dev-ai-usage` (commit `3ec63b48e2`), nhận diện code AI dựa trên các comment tự khai báo trong mã nguồn (như "written by ChatGPT", "claude generated", "copilot"...). Vì không có nhóm đối chứng là code không dùng AI, các tỷ lệ chỉnh sửa trong báo cáo không dùng để kết luận code AI "tốt hơn hay tệ hơn" code người viết, mà phản ánh mức độ ổn định và mục đích bảo trì thực tế sau khi đưa AI vào dự án.
 
-## Lý do cần chuẩn hoá dữ liệu
+---
 
-Dữ liệu gốc được lưu dưới dạng 2 file jsonl riêng biệt, một file chứa các đoạn code được match, một file chứa thông tin về lần thay đổi đầu tiên của các đoạn code đó. Hai file này có cấu trúc cột khác nhau và không được liên kết sẵn với nhau thành một bảng duy nhất.
-
-Ngoài ra, dữ liệu gốc còn thiếu một số thông tin quan trọng cho việc phân tích sau này, cụ thể là thời điểm commit của từng đoạn code (chỉ có link tới file, không có link tới commit và cũng không có ngày commit). Vì vậy, bước chuẩn hoá là cần thiết để:
-
-- Gộp 2 nguồn dữ liệu lại thành một bảng duy nhất, có cấu trúc rõ ràng và nhất quán
-- Bổ sung các thông tin còn thiếu (link commit, ngày commit) bằng cách truy vấn thêm từ GitHub
-- Đưa dữ liệu về một định dạng chuẩn (ví dụ định dạng ngày giờ thống nhất) để các bước xử lý và phân tích phía sau không phải xử lý lại từ đầu
-
-## Data dictionary
+## 2. Từ điển dữ liệu (Data Dictionary)
 
 | Cột | Kiểu dữ liệu | Ý nghĩa |
 |---|---|---|
-| id | string | Mã định danh của từng dòng dữ liệu, được sinh ra từ dataset gốc, bao gồm ngôn ngữ lập trình, loại comment tìm được và một số định danh phụ để phân biệt các match với nhau |
-| repo | string | Tên đầy đủ của repository GitHub chứa đoạn code, theo định dạng owner/ten-repo |
-| language | string | Ngôn ngữ lập trình của file chứa đoạn code, ví dụ python, js |
-| commit_url | string | Đường dẫn tới commit cuối cùng sửa dòng comment AI, lấy bằng `git blame` (GitHub GraphQL API) trên phiên bản file trong dữ liệu gốc. Cột này không có sẵn trong dữ liệu gốc |
-| file | string | Đường dẫn tương đối của file trong repository, tính từ thư mục gốc |
-| code_block | string | Đoạn code thực tế được match với comment liên quan đến AI. Ký tự xuống dòng trong code được thay bằng chuỗi ký tự "\n" để tránh làm hỏng định dạng khi lưu vào file csv |
-| commit_date | datetime (UTC, ISO 8601) | Thời điểm của commit `commit_url`. Phiên bản file trong dữ liệu gốc là một phiên bản về sau, nên một lần sửa dòng comment sau khi code được đưa vào sẽ làm ngày này muộn hơn thực tế. Vì vậy đây chỉ là cận trên của ngày code được đưa vào. Có thể bị thiếu (null), xem phần Dữ liệu bị thiếu |
-| change_commit_url | string | Đường dẫn tới commit đầu tiên sửa đổi đoạn code này (nếu thu thập được), lấy trực tiếp từ dữ liệu gốc |
-| change_commit_date | datetime (UTC, ISO 8601) | Thời điểm của commit sửa đổi nêu trên. Bị để trống nếu nguồn không thu thập được lần thay đổi đầu tiên, xem phần Dữ liệu bị thiếu |
-| has_recorded_change | boolean | True nếu có `change_commit_date`. Là cận dưới của việc code bị sửa (tạo ở notebook 03) |
-| AI_task_type | string | AI được dùng cho việc gì (Code Implementation, Documentation, Testing, ...). Do LLM gán, lưu trong `data/processed/commit_annotations_llm.csv`. Chưa được kiểm chứng, xem notebook 08 |
-| AI_contribution_type | string | AI đóng góp theo cách nào (Implementation, Artifact Generation, Knowledge Support, ...). Do LLM gán, cùng file với `AI_task_type` |
+| `id` | string | Mã định danh của match trong dữ liệu gốc. |
+| `repo` | string | Tên đầy đủ của repository (`owner/repo`). |
+| `language` | string | Ngôn ngữ lập trình (`python` hoặc `js`). |
+| `file_url` | string | Đường dẫn tới phiên bản file trong dữ liệu gốc. |
+| `commit_url` | string | Link commit cuối cùng sửa dòng comment AI (lấy qua `git blame` bằng GitHub GraphQL API). |
+| `file` | string | Đường dẫn tương đối của file trong repo. |
+| `comment` | string | Nội dung comment nhắc tới AI. |
+| `code_block` | string | Đoạn code đi kèm comment AI. |
+| `commit_date` | datetime (UTC) | Thời điểm của `commit_url`. Đây là cận trên của ngày code được đưa vào. |
+| `change_commit_url` | string | Link commit đầu tiên chỉnh sửa đoạn code này (nếu thu thập được). |
+| `change_commit_date` | datetime (UTC) | Thời điểm của lần chỉnh sửa đầu tiên. |
+| `change_commit_message` | string | Nội dung commit message của lần chỉnh sửa đầu tiên. |
+| `has_recorded_change` | boolean | `True` nếu có `change_commit_date` (cận dưới của việc code bị sửa). |
+| `days_to_modification` | float | Số ngày từ `commit_date` đến `change_commit_date` (chỉ giữ giá trị > 0). |
+| `change_30d` | boolean | Đoạn code có bị sửa trong 30 ngày đầu hay không (chỉ tính trên các khối có đủ ít nhất 30 ngày theo dõi). |
+| `code_lines`, `code_chars` | int | Số dòng và số ký tự của đoạn code. |
+| `comment_chars` | int | Độ dài của đoạn comment AI. |
+| `has_function_def`, `has_class_def` | boolean | Đoạn code có chứa định nghĩa hàm hoặc class hay không. |
+| `ai_tool` | string | Công cụ AI được nhận diện bằng từ khóa (`chatgpt_gpt`, `claude`, `github_copilot`, `gemini_bard`, `llama_meta`, `other_tool`, `other_ai`). |
+| `ai_verb` | string | Mức độ đóng góp từ mẫu comment (`written` hoặc `assisted`). |
+| `file_role` | string | Vai trò của file trong dự án (`core_source`, `notebook_or_script`, `test`, `frontend_web`, `docs_or_config`). |
+| `change_intent` | string | Mục đích lần sửa đầu tiên phân loại từ `change_commit_message` (`bug_fix`, `feature_update`, `refactor_cleanup`, `docs_or_test`, `other_change`, `no_recorded_change`). |
+| `repo_ai_commit_count` | int | Số commit AI của repo xuất hiện trong tập dữ liệu này. |
+| `AI_task_type`, `AI_contribution_type` | string | Nhãn tác vụ và cách đóng góp của AI (lưu riêng trong `commit_annotations_llm.csv`). |
 
-## Quy trình xử lý và chuẩn hoá dữ liệu thô
+---
 
-Dữ liệu gốc nằm trong 2 file jsonl:
-- comment_codeblock_dataset.jsonl: chứa toàn bộ các đoạn code được match với comment liên quan đến AI
-- comment_codeblock_first_change_dataset.jsonl: chứa thông tin về lần commit đầu tiên sửa đổi các đoạn code đó (nếu có)
+## 3. Quy trình chuẩn hóa và làm sạch dữ liệu
 
-Các bước xử lý chính như sau:
+### 3.1. Chuẩn hóa dữ liệu thô (`01_standardize.ipynb`)
+1. Đọc 2 file JSONL gốc (`comment_codeblock_dataset.jsonl` và `comment_codeblock_first_change_dataset.jsonl`) và gộp theo `match_id`.
+2. Sử dụng GitHub GraphQL API (kèm batching và chạy song song bằng `ThreadPoolExecutor`) để lấy nội dung file và chạy `git blame` trên dòng chứa comment AI, qua đó lấy `commit_url` và `commit_date`. Cách làm này giúp giảm tỷ lệ lỗi xuống còn khoảng 3,9% so với cách đọc file `.patch` ban đầu.
+3. Giữ lại các cột `comment`, `file_url` và `change_commit_message` để phục vụ phân tích ngữ cảnh và mục đích sửa code ở các bước sau.
 
-1. Đọc cả 2 file jsonl bằng pandas, sau đó merge lại với nhau bằng left join để giữ nguyên toàn bộ số dòng của bảng gốc, đồng thời bổ sung thêm thông tin thay đổi nếu match được.
-2. Tạo bảng output mới, lấy các cột cần thiết từ dataset gốc và đổi tên lại cho ngắn gọn, rõ ràng hơn (id, repo, language, file, code_block).
-3. Dữ liệu gốc chỉ có đường dẫn tới file (blob url) ở một phiên bản về sau, không có đường dẫn tới commit đưa code vào. Notebook tìm dòng comment AI trong phiên bản file đó và chạy `git blame` trên dòng này để lấy commit cuối cùng sửa nó.
-4. Dữ liệu gốc cũng không có sẵn ngày commit, nên cần gọi thêm GitHub API để lấy. Cách tiếp cận ban đầu là lấy file .patch của từng commit (không cần token xác thực) rồi tìm dòng "Date:" trong nội dung trả về. Tuy nhiên cách này thất bại ở phần lớn số dòng (khoảng 97%), do GitHub từ chối render file patch khi diff quá lớn hoặc commit có chứa nội dung nhị phân. Sau đó, quy trình được chuyển sang dùng GitHub API chính thức (GraphQL) để lấy riêng ngày commit mà không cần render toàn bộ diff, giúp tỉ lệ thất bại giảm xuống còn khoảng 3%.
-5. Do số lượng commit cần truy vấn khá lớn, để tránh vượt giới hạn số lượng request của GitHub và rút ngắn thời gian xử lý, các kỹ thuật sau được áp dụng: loại bỏ các đường dẫn commit bị trùng lặp trước khi gọi API (do nhiều dòng dữ liệu có thể trỏ đến cùng một commit), gộp nhiều commit vào chung một truy vấn GraphQL duy nhất (batching), và thực hiện nhiều truy vấn song song bằng multithreading.
-6. Bổ sung 2 cột change_commit_url và change_commit_date từ dataset gốc vào bảng output.
-7. Xuất bảng kết quả ra file csv, lưu vào thư mục data/interim để phục vụ cho các bước xử lý tiếp theo.
+### 3.2. Xử lý dữ liệu thiếu và gộp trùng (`02` và `03`)
+1. **Thiếu `commit_date` (~3,9%):** Có 1.361/35.278 dòng không lấy được ngày commit qua GraphQL (do repo bị xóa, chuyển riêng tư hoặc lịch sử bị ghi đè). Các dòng này được loại bỏ vì không thể phân tích theo thời gian.
+2. **Thiếu `change_commit_date` (~63,2%):** Theo schema gốc, ô trống nghĩa là lần thay đổi đầu tiên không thu thập được chứ không phải code chưa từng bị sửa. Nhóm giữ lại toàn bộ các dòng này và đánh dấu qua biến `has_recorded_change`.
+3. **Gộp dòng trùng lặp:** Một đoạn comment có thể khớp với nhiều mẫu tìm kiếm nên xuất hiện nhiều lần. Sau khi gộp theo khóa `(repo, file, code_block)` và loại 4 khối của tháng 4/2026 (chưa đủ dữ liệu cả tháng), tập dữ liệu cuối cùng (`commits_features.csv`) còn **21.287 khối code duy nhất** thuộc **12.087 repository** (từ 03/12/2022 đến 31/03/2026).
+4. **Khoảng thời gian âm hoặc bằng 0:** Có 1.733 khối có `change_commit_date <= commit_date` (do comment bị sửa sau khi code đã thay đổi ở một phiên bản về sau). Các giá trị này được chuyển thành `NaN` ở cột `days_to_modification` và loại khỏi cửa sổ `change_30d`.
 
-## Hướng xử lý Dữ liệu bị thiếu (Data Cleaning)
+---
 
-Trong bảng dữ liệu sau khi chuẩn hoá, có 2 cột chính bị thiếu giá trị ở một số dòng. Dựa trên tính chất của từng loại missing data, chúng tôi đã đưa ra các hướng xử lý cụ thể như sau:
+## 4. Kết quả khám phá và phân tích
 
-**1. Cột `commit_date` (~3,9%)**:
-1.361/35.278 dòng không lấy được commit qua `git blame`, nên cả `commit_url` và `commit_date` đều trống. Với 1.082 dòng thiếu ngày ở lần chạy trước, kiểm tra bằng HTTP request cho thấy các URL trả về lỗi 404 (Not Found) hoặc 429 (Rate Limit). Nguyên nhân có thể là:
-- Repository đã bị xóa hoặc chuyển sang chế độ private sau thời điểm dữ liệu gốc được thu thập.
-- Lịch sử commit bị ghi đè (ví dụ force push hoặc amend).
-- Repository bị đổi tên hoặc chuyển chủ sở hữu.
-**-> Hướng xử lý: Xóa** 1.361 dòng này, vì không có ngày thì không dùng được cho phân tích theo thời gian. Còn lại 33.917 dòng.
+### 4.1. Xu hướng sử dụng và bối cảnh dự án
+- **Tăng trưởng theo thời gian:** Số lượng khối code có comment AI tăng mạnh từ khoảng 55 khối (12/2022) lên mức trung bình ~300-400 khối/tháng trong năm 2024, bùng nổ từ tháng 5/2025 (~1.140 khối/tháng) và đạt đỉnh ~1.580 khối/tháng vào 02/2026.
+- **Sự dịch chuyển công cụ AI:** Trong năm 2023 đến nửa đầu 2024, `chatgpt_gpt` chiếm ưu thế áp đảo (55% - 73% mỗi quý). Tuy nhiên từ năm 2025 đến quý 1/2026, tỷ trọng `chatgpt_gpt` giảm dần xuống còn khoảng 12%, trong khi **`claude` tăng vọt lên khoảng 32%** vào quý 1/2026. Tính chung cả tập dữ liệu: `other_ai` (không nêu rõ tên công cụ) chiếm 30,6% (6.507 khối), `chatgpt_gpt` 30,1% (6.408), `claude` 19,5% (4.160), `github_copilot` 12,6% (2.691), `gemini_bard` 5,2% (1.101) và `llama_meta` 1,8% (387).
+- **Ngôn ngữ và vai trò file:** Python chiếm 73,4% (15.624 khối), JavaScript chiếm 26,6% (5.663 khối). Phần lớn code AI nằm trong mã nguồn chính `core_source` (15.708 khối, 73,8%), tiếp theo là `notebook_or_script` (9,4%), `test` (7,2%), `frontend_web` (7,1%) và `docs_or_config` (2,5%).
+- **Lưu ý độ lệch theo repo:** Repo `conradhuebler/ALIMA` chiếm tỷ trọng lớn nhất trong tập dữ liệu (hơn 1.600 khối, dùng Claude rất nhiều), nên mọi kiểm định và ước lượng đều phải tính sai số chuẩn theo cụm `repo` và kiểm tra độ nhạy khi loại bỏ repo này.
 
-**2. Cột `change_commit_url` và `change_commit_date` (~63,2%)**:
-22.282/35.278 dòng bị để trống ở 2 cột này. Theo `dataset/SCHEMA.md` của nguồn, ô trống nghĩa là lần thay đổi đầu tiên "was not successfully collected" (không thu thập được). Vì vậy không thể kết luận rằng code ở các dòng này chưa từng bị sửa.
-**-> Hướng xử lý: Không xóa.** Tạo cột `has_recorded_change` (Boolean):
-- Có ngày thay đổi: `has_recorded_change = True`.
-- Để trống: `has_recorded_change = False`. Không biết code có bị sửa hay không.
+### 4.2. Tỷ lệ chỉnh sửa trong 30 ngày (`change_30d`) và mục đích sửa đổi (`change_intent`)
+- **Tỷ lệ sửa trong 30 ngày:** Trong 19.554 khối đủ điều kiện theo dõi ít nhất 30 ngày, có **23,0% (4.497 khối)** bị chỉnh sửa trong vòng 30 ngày đầu. Trung vị thời gian đến lần sửa đầu tiên (trên 5.714 khối có thời gian hợp lệ) là **3,07 ngày** (95% CI: `[2.89, 3.59]`).
+- **Khác biệt theo vai trò file:** Nhóm `core_source` (23,7%), `frontend_web` (23,8%) và `docs_or_config` (24,4%) có tỷ lệ bị sửa trong 30 ngày cao hơn rõ rệt so với `notebook_or_script` (19,4%) và `test` (19,4%).
+- **Mục đích của lần sửa đầu tiên:** Trên 7.445 khối có ghi nhận thay đổi, 28,6% là cập nhật tính năng (`feature_update`, 2.132 khối), **25,6% là sửa lỗi (`bug_fix`, 1.905 khối)**, 10,1% là dọn dẹp/refactor (`refactor_cleanup`, 752 khối), 8,1% là sửa test/tài liệu (`docs_or_test`, 602 khối) và 27,6% là thay đổi khác.
 
-Tỷ lệ `has_recorded_change = True` là cận dưới của tỷ lệ code bị sửa.
+### 4.3. Kiểm định thống kê theo cụm repo (`05_statistical_inference.ipynb`)
+- **Các yếu tố liên hệ có ý nghĩa thống kê với `change_30d`** (mức ý nghĩa alpha = 0,05, sai số chuẩn theo cụm `repo`):
+  - **Kích thước code (`code_lines`):** `p_cluster = 8,77e-27` (rank-biserial = -0,166). Các đoạn code dài hơn có xu hướng bị chỉnh sửa trong 30 ngày nhiều hơn.
+  - **Năm commit (`year`):** `p_cluster = 4,61e-5` (tỷ lệ sửa 30 ngày giảm từ 30,5% năm 2023 xuống ~21,9% năm 2025 và ~22,4% năm 2026; khi bỏ `ALIMA` thì năm 2025-2026 còn ~21,1% - 21,3%).
+  - **Vai trò file (`file_role`):** `p_cluster = 0,024`. Phép thử A/B cho thấy `core_source` có tỷ lệ sửa trong 30 ngày cao hơn `notebook_or_script` là **+4,34 điểm phần trăm** (`p_cluster = 0,006`, 95% CI: `[1,23%, 7,45%]`).
+  - **Công cụ AI (`ai_tool`):** `p_cluster = 0,014` trên `change_30d` và liên hệ mạnh với tỷ lệ sửa lỗi `is_bug_fix` (`p_cluster = 2,65e-18`, Cramer's V = 0,257).
+- **Các yếu tố không có khác biệt có ý nghĩa thống kê sau khi gom cụm repo:**
+  - Python so với JS trên `change_30d` (`p_cluster = 0,055`) và trên `days_to_modification` (`p_cluster = 0,323`).
+  - Cuối tuần so với ngày thường (`p_cluster = 0,197`).
+  - `written` so với `assisted` (`p_cluster = 0,220`).
 
-**3. Dòng trùng lặp**:
-33.917 dòng chỉ có 21.502 khối `(repo, file, code_block)` duy nhất, chủ yếu do một comment khớp với nhiều mẫu tìm kiếm. Giữ một dòng cho mỗi khối; khi các dòng trùng có `commit_date` khác nhau, giữ ngày sớm nhất. Loại thêm 4 khối của tháng 4/2026 vì dữ liệu tháng này chưa đủ. Còn lại 21.498 khối.
+### 4.4. Hồi quy và mô hình phân loại (`06` và `07`)
+- **Hồi quy tuyến tính D2 (`log1p(days_to_modification)`):** R-squared đạt **0,072** (tăng so với 0,025 khi chưa biến đổi logarit), tất cả hệ số VIF đều dưới 1,6 (không bị đa cộng tuyến). `log_code_lines` có hệ số âm (`-0,158`, `p = 1,6e-5`), cho thấy khối code càng dài thì thời gian tới lần sửa đầu tiên càng ngắn.
+- **Hồi quy Logistic D3 (`change_30d`):** `log_code_lines` làm tăng khả năng bị sửa trong 30 ngày (`OR = 1,24`, `p = 2,1e-31`), trong khi `notebook_or_script` (`OR = 0,76`, `p = 0,006`) và `test` (`OR = 0,80`, `p = 0,048`) ít bị sửa trong 30 ngày hơn `core_source`.
+- **Hồi quy Logistic D3b (`is_bug_fix`):** Trong các khối đã từng bị sửa, file `test` có tỷ lệ lần sửa đầu là sửa lỗi cao hơn `core_source` (`OR = 1,63`, `p = 0,00025`). Nhóm `claude` (`OR = 4,45`) và `llama_meta` (`OR = 5,13`) có tỷ lệ `bug_fix` cao hơn `chatgpt_gpt` (cần lưu ý yếu tố tập trung theo một số repo lớn như `ALIMA`).
+- **Phân loại `change_30d` (Notebook 07):** Khi chia train/test và 5-fold GroupKFold theo `repo` với các đặc trưng sạch (không dùng giờ UTC hay số lượng commit trong dataset), Random Forest đạt **ROC-AUC = 0,601** (test) và **0,595 ± 0,006** (5-fold CV), Logistic Regression đạt **0,600** (test) và **0,581 ± 0,008** (CV). Hai đặc trưng quan trọng nhất là `log_code_lines` và `comment_chars`. Điều này cho thấy chỉ dựa vào thông tin bề mặt của đoạn code chưa đủ để dự đoán chính xác khả năng code bị sửa trong 30 ngày, vì việc sửa đổi còn phụ thuộc vào nghiệp vụ và logic bên trong dự án.
 
-**4. `commit_date` chỉ là cận trên**:
-`git blame` chạy trên một phiên bản file về sau, nên một lần sửa dòng comment sau khi code được đưa vào sẽ làm `commit_date` muộn hơn thực tế. Trong dữ liệu chưa gộp, 17% dòng có thay đổi có lần thay đổi đầu tiên xảy ra trước `commit_date` và 12% có thời điểm trùng nhau. Sau khi gộp, 1.742 khối có khoảng thời gian ≤ 0; các khoảng này bị loại khỏi `days_to_modification` nhưng khối vẫn giữ `has_recorded_change = True`.
+### 4.5. Phân tích tác vụ AI và độ tin cậy nhãn (`08_ai_task_contribution.ipynb`)
+- Trên 21.276 khối khớp được với bộ nhãn LLM (`17.676` khối không bị gán `False Positive`, chiếm 83,1%): tác vụ phổ biến nhất là **Code Implementation (47,8%)**, tiếp theo là **Documentation (17,0%)**, **Code Enhancement (11,7%)**, **Testing (5,5%)** và **Bug Fixing (0,7%)**.
+- Mối liên hệ giữa tác vụ AI và `file_role` rất rõ rệt (`Cramer's V = 0,358`): ở các file `test`, tỷ lệ tác vụ `Testing` chiếm tới **63%**, còn ở `core_source` thì `Code Implementation` chiếm **57%**.
+- **Giới hạn của nhãn LLM:** Đối chiếu với 355 dòng do nhóm tự gán thủ công, độ đồng thuận Cohen's kappa chỉ đạt **0,23 - 0,24**. Ma trận nhầm lẫn cho thấy LLM thường gán nhầm các đoạn `Code Implementation` (theo nhóm) sang `Code Enhancement`, `Documentation` hoặc `Generic / Indeterminate`. Nhóm đã trích xuất sẵn một mẫu ngẫu nhiên phân tầng 300 dòng (`reports/team_labeling_sample_300.csv`) để có thể kiểm chứng lại khách quan hơn ở các nghiên cứu tiếp theo.
 
-## Công cụ sử dụng
+---
 
-- Python: ngôn ngữ chính được dùng để viết toàn bộ pipeline xử lý dữ liệu
-- Jupyter Notebook: môi trường thực thi code theo từng bước, thuận tiện cho việc kiểm tra kết quả ở mỗi giai đoạn
-- pandas: đọc file jsonl/csv, xử lý và merge dữ liệu dạng bảng
-- requests: gửi request tới API của GitHub
-- GitHub GraphQL API: truy vấn metadata của commit (cụ thể là ngày commit), được dùng thay cho phương pháp scrape trực tiếp vì cho kết quả nhanh và ổn định hơn
-- concurrent.futures (ThreadPoolExecutor): thực hiện nhiều request song song để rút ngắn thời gian xử lý
-- Các thư viện chuẩn khác: os, io (StringIO), datetime, time, phục vụ việc đọc file, tạo thư mục và quản lý thời gian khi xuất file
+## 5. Khuyến nghị thực tế khi sử dụng AI trong lập trình
 
-## Phân tích trực quan hóa (Visualization):
+Dựa trên các kết quả định lượng thu được từ dữ liệu, nhóm rút ra một số gợi ý thực tế cho lập trình viên:
 
-Trong phần này, chúng ta sẽ tiến hành khám phá và trực quan hóa dữ liệu tương tác AI để làm rõ các đặc trưng hành vi và xu hướng phát triển theo thời gian. Việc phân tích đa chiều qua các biểu đồ sẽ giúp cung cấp cái nhìn tổng quan lẫn chi tiết về sự dịch chuyển trong quá trình ứng dụng công cụ hỗ trợ lập trình.
-
-**1.** Khảo sát số lượng và sự tăng trưởng theo năm:
-- **Mục tiêu:** Khảo sát nhịp độ phát triển dài hạn và đo lường mức độ bùng nổ trong việc ứng dụng AI vào các code commit qua từng năm.
-- **Phân tích:** Năm 2022 chỉ có 55 khối (0,3%), đều từ tháng 12. Số khối tăng từ 1.539 (2023) lên 4.001 (2024) và 11.382 (2025, 52,9% trong tổng số 21.498 khối). Năm 2026 chỉ có dữ liệu quý 1 (4.521 khối), nên không so sánh trực tiếp với các năm đủ 12 tháng.
-- **Giới hạn:** Dữ liệu bắt đầu từ 3/12/2022, sau ngày ChatGPT ra mắt (30/11/2022), nên không so sánh được giai đoạn trước và sau ChatGPT. Hoạt động chung trên GitHub cũng tăng trong giai đoạn này, nên cần chuẩn hóa theo số lần push trước khi kết luận về tốc độ tăng.
+1. **Chia nhỏ đoạn code khi nhờ AI sinh mới (`code_lines`):** Dữ liệu ở cả kiểm định C1.5, hồi quy D2 và D3 đều cho thấy đoạn code AI càng dài thì khả năng bị chỉnh sửa trong 30 ngày càng cao (`OR = 1,24`) và thời gian tới lần sửa đầu tiên càng ngắn. Nên yêu cầu AI viết từng hàm nhỏ, rõ ràng thay vì sinh cả một file dài hàng trăm dòng cùng lúc.
+2. **Kiểm tra kỹ khi dùng AI cho mã nguồn chính (`core_source`) và file `test`:** Code AI nằm trong `core_source` có tỷ lệ phải sửa trong 30 ngày đầu cao hơn hẳn các script/notebook thử nghiệm (`23,7%` so với `19,4%`). Đáng chú ý, dù file `test` ít bị sửa tổng thể hơn, nhưng khi đã phải sửa thì tỷ lệ sửa lỗi (`bug_fix`) lại cao hơn (`OR = 1,63`). Lập trình viên cần tự kiểm tra lại logic kiểm thử (assertions, edge cases) khi nhờ AI viết unit test.
+3. **Không quá phụ thuộc vào việc chọn "công cụ nào tốt nhất" theo cảm tính:** Mặc dù tỷ trọng người dùng đang chuyển dịch mạnh từ ChatGPT sang Claude trong năm 2025-2026, sự khác biệt về tỷ lệ code phải sửa trong 30 ngày giữa các công cụ là rất nhỏ (`Cramer's V = 0,04`). Chất lượng đầu ra vẫn phụ thuộc chủ yếu vào ngữ cảnh bài toán, độ dài đoạn code yêu cầu và cách lập trình viên review lại trước khi commit.
+4. **Minh bạch và rõ ràng khi ghi chú AI trong dự án nhóm:** Tỷ lệ comment ghi chung chung (`other_ai`, chiếm 30,6%) hoặc khó phân loại (`Generic / Indeterminate`, 9,2%) còn cao. Khi làm việc nhóm, nên ghi rõ AI được dùng cho phần việc nào (viết mới, gợi ý sửa lỗi hay tạo tài liệu) để đồng đội dễ review và bảo trì về sau.
